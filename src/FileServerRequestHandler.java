@@ -8,6 +8,7 @@ import java.util.List;
 
 
 public class FileServerRequestHandler implements Runnable {
+	
 	private final Socket clientSocket;
 	private final BufferedReader readStream;
 	private final BufferedWriter writeStream;

@@ -8,11 +8,9 @@ import java.net.UnknownHostException;
 public class FileServer {
 	
 	public static final int PARTITION_SIZE = 1000;
-	
+	public static final int    DEFAULT_PORT = 5000;
 	public static ZkConnector zkc = null;
-	
 	public static ServerSocket serverSocket = null;
-	
 	public static ArrayList<String> dictionary = new ArrayList<String>();
 	
 	public static void main(String[] args) {
@@ -31,7 +29,7 @@ public class FileServer {
 		
 		System.out.println("Starting the server.");
 		
-		int port = args.length == 3 ? Integer.parseInt(args[2]) : 5000;
+		int port = args.length == 3 ? Integer.parseInt(args[2]) : DEFAULT_PORT;
 		initServer(port);
 		
 		if (serverSocket == null) return;

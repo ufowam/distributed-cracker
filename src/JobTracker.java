@@ -15,11 +15,10 @@ public class JobTracker {
 	
 	public static final double PARTITION_SIZE = 1000;
 	public static final double DICT_SIZE = 265744;
+	public static final int    DEFAULT_PORT = 3000;
 	public static final String JOBS_ROOT = "/jobs";
 	public static final String WORKERS_ROOT = "/workers";
-	
 	public static ZkConnector zkc = null;
-	
 	public static ServerSocket serverSocket = null;
 	
 	public static void main(String[] args) {
@@ -28,11 +27,12 @@ public class JobTracker {
 			return;
 		}
 		
-		int port = args.length == 2 ? Integer.parseInt(args[2]) : 3000;
+		int port = args.length == 2 ? Integer.parseInt(args[2]) : DEFAULT_PORT;
 		initServer(port);
 		
 		if (serverSocket == null) return;
 		
+		// Connect to Zookeeper.
 		zkc = new ZkConnector();
         try {
             zkc.connect(args[0]);
@@ -41,18 +41,19 @@ public class JobTracker {
             return;
         }
         
+        // Create the job tracking znode.
         Stat stat = zkc.exists(JOBS_ROOT, null);
         if (stat == null) {
         	zkc.create(JOBS_ROOT, null, CreateMode.PERSISTENT);
         }
         
+        // Start primary/backup monitoring.
     	try {
     		InetAddress ip;
 			ip = InetAddress.getLocalHost();
 			String address = ip.getHostName() + ":" + serverSocket.getLocalPort();
 			(new Thread (new PrimaryMonitor(zkc, "/jobTrackerPrimary", address))).start();
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return;
 		}
@@ -60,6 +61,10 @@ public class JobTracker {
 		runServer();
 	}
 	
+	/**
+	 * Create the server socket.
+	 * @param port
+	 */
 	public static void initServer(int port) {
 		try {
 			serverSocket = new ServerSocket(port);
@@ -69,6 +74,9 @@ public class JobTracker {
 		}
 	}
 	
+	/**
+	 * Start accepting new client connections.
+	 */
 	public static void runServer() {
 		/* Indefinitely accept new clients */
 		while(true) {
@@ -83,6 +91,12 @@ public class JobTracker {
 		}
 	}
 	
+	/**
+	 * Create a new job for the password hash. If a job already exists
+	 * for this hash, we just return true.
+	 * @param passwordHash The password hash to crack.
+	 * @return true if the job is successfully created, false otherwise.
+	 */
 	public static synchronized boolean createNewJob(String passwordHash) {
 		int tasks = (int) Math.ceil(DICT_SIZE/PARTITION_SIZE);
 		String jobPath = JOBS_ROOT + "/" + passwordHash;
@@ -92,6 +106,7 @@ public class JobTracker {
 			return true;
 		}
 		
+		// Only create the job if there are workers available.
 		try {
 			List<String> workers = zkc.zooKeeper.getChildren(WORKERS_ROOT, null);
 			if (workers.isEmpty()) return false;
@@ -103,7 +118,7 @@ public class JobTracker {
 		
 		Code ret;
 		ret = zkc.create(
-                jobPath,         // Path of znode
+                jobPath,         // Path of znode.
                 "inprogress",           // Data not needed.
                 CreateMode.PERSISTENT   // Znode type, set to EPHEMERAL.
                 );
@@ -124,6 +139,11 @@ public class JobTracker {
 		return true;
 	}
 	
+	/**
+	 * Return the job's status for the given password hash.
+	 * @param passwordHash 
+	 * @return The job's status.
+	 */
 	public static synchronized String getJobStatus(String passwordHash) {
 		try {
 			String data = zkc.getData(JOBS_ROOT + "/" + passwordHash, null, null);

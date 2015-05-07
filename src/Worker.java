@@ -20,6 +20,7 @@ import org.apache.zookeeper.data.Stat;
 
 
 public class Worker {
+	
 	public static final String FILESERVER_PATH = "/fileServerPrimary";
 	public static final String JOBS_ROOT = "/jobs";
 	public static final String WORKERS_ROOT = "/workers";
@@ -29,6 +30,7 @@ public class Worker {
 	public static Watcher watcher = null;
 	public static String fileServerAddr = "";
 	
+	// Used to notify worker of an item ready to be consumed in the jobs pool.
 	static Integer mutex;
 	
 	public static void main(String[] args) {
@@ -48,29 +50,36 @@ public class Worker {
         init();
 	}
 	
+	/**
+	 * Initialize the worker.
+	 */
 	public static void init() {
 		mutex = new Integer(-1);
+		
 		watcher = new Watcher() { // Anonymous Watcher
             @Override
             public void process(WatchedEvent event) {
                 handleEvent(event);
-        
-            } };
+        }   };
 		
 		setFileServerAddr();
 		
+		// Create the root znode where the list of workers will be kept.
 		Stat stat = zkc.exists(WORKERS_ROOT, null);
 		if (stat == null) {
 			zkc.create(WORKERS_ROOT, null, CreateMode.PERSISTENT);
 		}
 		
+		// Add the worker to the list of workers.
 		zkc.create(WORKERS_ROOT + "/worker", null, CreateMode.EPHEMERAL_SEQUENTIAL);
 		
+		// Create the znode that keeps track of what tasks workers are processing.
 		stat = zkc.exists(WORKING_ROOT, null);
 		if (stat == null) {
 			zkc.create(WORKING_ROOT, null, CreateMode.PERSISTENT);
 		}
 		
+		// Consume and process tasks indefinitely.
 		while (true) {
 			try {
 				String task = consume();
@@ -89,18 +98,28 @@ public class Worker {
 		
 	}
 	
+	/**
+	 * Consume a task from the task pool.
+	 * @return The consumed task.
+	 * @throws KeeperException
+	 * @throws InterruptedException
+	 */
 	public static String consume() throws KeeperException, InterruptedException {
 		List<String> jobs = zkc.zooKeeper.getChildren(JOBS_ROOT, null);
+		// Find a job that's not done yet.
 		for (String job : jobs) {
 			String jobPath = JOBS_ROOT + "/" + job;
 			String jobStatus = zkc.getData(jobPath, null, null);
 			if ("inprogress".equals(jobStatus)) {
+				// Job found. Find a task that's not being worked on.
 				List<String> tasks = zkc.zooKeeper.getChildren(jobPath, null);
 				for (String task : tasks) {
 					String taskPath = jobPath + "/" + task;
 					String taskData = zkc.getData(taskPath, null, null);
 					Code ret = zkc.create(WORKING_ROOT + "/" + job + "-" + task, null, CreateMode.EPHEMERAL);
 					if (ret == Code.OK) {
+						// The znode being successfully created means
+						// no other worker is processing the task.
 						return taskData;
 					}
 				}
@@ -110,6 +129,13 @@ public class Worker {
 		return "";
 	}
 	
+	/**
+	 * Given a task comprised of a password hash and a partition id
+	 * try to find a word matching the hash in the dictionary partition.
+	 * @param task
+	 * @throws KeeperException
+	 * @throws InterruptedException
+	 */
 	public static void processTask(String task) throws KeeperException, InterruptedException {
 		System.out.println("Processing task " + task);
 		String[] params = task.split(" ");
@@ -117,6 +143,7 @@ public class Worker {
 		String password = "";
 		int partitionId = Integer.parseInt(params[1]);
 		
+		// Get the dictonary partition.
 		ArrayList<String> partition = null;
 		while (partition == null) {
 			partition = getPartition(partitionId);
@@ -124,14 +151,14 @@ public class Worker {
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 		}
 		
+		// Try to match the password hash to a word in the partition.
 		for (String word : partition) {
-			String wordHash = getHash(word);
+			String wordHash = getMd5Hash(word);
 			if (passwordHash.equals(wordHash)) {
 				password = word;
 				break;
@@ -143,10 +170,14 @@ public class Worker {
 			System.out.println("FOUND PASSWORD!");
 			
 			String data = "found " + password;
+			
+			// Set the result to the password.
 			zkc.setData(jobPath, data);
 		} else {
 			List<String> children = zkc.zooKeeper.getChildren(jobPath, null);
 			if (children.isEmpty()) {
+				// There are no more tasks to process for this job.
+				// Set the result to not found.
 				String data = "fail notfound";
 				zkc.setData(jobPath, data);
 			}
@@ -158,11 +189,13 @@ public class Worker {
 		zkc.zooKeeper.delete(workPath, 0);
 	}
 	
+	/**
+	 * Fetch the file server address and set it.
+	 */
 	public static void setFileServerAddr() {
 		try {
 			fileServerAddr = zkc.getData(FILESERVER_PATH, watcher, null);
 		} catch (KeeperException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return;
 		} catch (InterruptedException e) {
@@ -171,35 +204,12 @@ public class Worker {
 		}
 	}
 	
-	public static void handleEvent(WatchedEvent event) {
-		String path = event.getPath();
-        EventType type = event.getType();
-        if(path.equalsIgnoreCase(FILESERVER_PATH)) {
-            if (type == EventType.NodeDeleted) {
-                System.out.println("FileServer Deleted");
-                fileServerAddr = "";
-            }
-            if (type == EventType.NodeCreated) {
-            	System.out.println("FileServer Created");
-            	try {
-					fileServerAddr = zkc.getData(FILESERVER_PATH, watcher, null);
-				} catch (KeeperException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-					return;
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					return;
-				}
-            }
-        } else if (path.equals(JOBS_ROOT)) {
-        	synchronized(mutex) {
-        		mutex.notify();
-        	}
-        }
-	}
-	
-	public static String getHash(String word) {
+	/**
+	 * Return the md5 hash for the given word.
+	 * @param word
+	 * @return
+	 */
+	public static String getMd5Hash(String word) {
 
         String hash = null;
         try {
@@ -213,6 +223,11 @@ public class Worker {
         return hash;
     }
 	
+	/**
+	 * Fetch the dictionary partition from the file server.
+	 * @param partitionId 
+	 * @return The list of words that comprise the dictionary partition.
+	 */
 	public static ArrayList<String> getPartition(int partitionId) {
 		if ("".equals(fileServerAddr)) {
 			setFileServerAddr();
@@ -253,10 +268,42 @@ public class Worker {
 			return partition;
 			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
+	}
+	
+	/**
+	 * Handle the Zookeeper event.
+	 * @param event Zookeeper event.
+	 */
+	public static void handleEvent(WatchedEvent event) {
+		String path = event.getPath();
+        EventType type = event.getType();
+        if(path.equalsIgnoreCase(FILESERVER_PATH)) {
+        	// The fileserver's status has changed.
+            if (type == EventType.NodeDeleted) {
+                System.out.println("FileServer is gone.");
+                fileServerAddr = "";
+            }
+            if (type == EventType.NodeCreated) {
+            	System.out.println("FileServer created.");
+            	try {
+					fileServerAddr = zkc.getData(FILESERVER_PATH, watcher, null);
+				} catch (KeeperException e) {
+					e.printStackTrace();
+					return;
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					return;
+				}
+            }
+        } else if (path.equals(JOBS_ROOT)) {
+        	// The job pool is not empty anymore.
+        	synchronized(mutex) {
+        		mutex.notify();
+        	}
+        }
 	}
 
 }

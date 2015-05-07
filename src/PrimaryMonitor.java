@@ -25,7 +25,10 @@ public class PrimaryMonitor implements Runnable {
 	    }   };
     }
     
-    private void checkpath() {
+    /**
+     * 
+     */
+    private void monitor() {
         Stat stat = zkc.exists(primaryPath, watcher);
         if (stat == null) {              // Znode doesn't exist; let's try creating it.
             Code ret = zkc.create(
@@ -43,17 +46,17 @@ public class PrimaryMonitor implements Runnable {
         if(path.equalsIgnoreCase(primaryPath)) {
             if (type == EventType.NodeDeleted) {
             	// Primary disappeared, try to become the new primary.
-                checkpath(); 
+                monitor(); 
             }
             if (type == EventType.NodeCreated) {
-                checkpath(); // Re-enable the watch.
+                monitor(); // Re-enable the watch.
             }
         }
     }
 
 	@Override
 	public void run() {
-		checkpath();
+		monitor();
 		while (true) {
             try{ Thread.sleep(1); } catch (Exception e) {}
         }
