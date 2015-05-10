@@ -1,3 +1,10 @@
+This is a distributed password cracker. The different nodes comprising the system can run on different machines and everything is coordinated using zookeeper. You will therefore need to have zookeeper running and provide it's address and port to the different nodes.
+
+You can launch multiple nodes of each module:
+- The fileservers and job trackers will operate on a primary/backup basis. If the primary fails, one of the backups will take over.
+- The workers will keep consuming tasks until shut down and coordinate with each other so that no task is processed more than once. If there are no tasks, they will stay idle until there are tasks ready to be processed again.
+- The client drivers is where users can launch password cracking jobs and check for the result.
+
 ## Compiling
 
 ```
@@ -5,24 +12,18 @@
 % make
 ```
 
-## Client
+## Running the code
 
 All the following should be run from the src directory.
 
 To start the Client run: 
     `java ClientDriver <Zookeeper Host>:<Zookeeper Port>`
 
-## FileServer
-
 To start the FileServer run: 
     `java Fileserver <Zookeeper Host>:<Zookeeper Port> <Path to dictionary> [Server Port]`
 
-## JobTracker
-
 To start the JobTracker run: 
     `java JobTracker <Zookeeper Host>:<Zookeeper Port> [Server Port]`
-
-## Worker
 
 To start the Worker run: 
     `java Worker <Zookeeper Host>:<Zookeeper Port>`
