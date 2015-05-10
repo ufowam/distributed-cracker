@@ -5,6 +5,8 @@ You can launch multiple nodes of each module:
 - The workers will keep consuming tasks until shut down and coordinate with each other so that no task is processed more than once. If there are no tasks, they will stay idle until there are tasks ready to be processed again.
 - The client drivers is where users can launch password cracking jobs and check for the result.
 
+For more information, you can check the [design](https://github.com/ufowam/distributed-cracker/wiki/Design) page.
+
 ## Compiling
 
 ```
