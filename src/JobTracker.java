@@ -27,7 +27,7 @@ public class JobTracker {
 			return;
 		}
 		
-		int port = args.length == 2 ? Integer.parseInt(args[2]) : DEFAULT_PORT;
+		int port = args.length == 2 ? Integer.parseInt(args[1]) : DEFAULT_PORT;
 		initServer(port);
 		
 		if (serverSocket == null) return;

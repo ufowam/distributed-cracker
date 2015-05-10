@@ -100,7 +100,6 @@ public class ClientDriver {
 			client.close();
 			return resp;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return "";
