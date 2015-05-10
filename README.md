@@ -1,24 +1,31 @@
+## Compiling
 
+```
+% cd src
+% make
+```
 
 ## Client
 
+All the following should be run from the src directory.
+
 To start the Client run: 
-    `java ClientDriver <IP Address of ZK>:<Port>`
+    `java ClientDriver <Zookeeper Host>:<Zookeeper Port>`
 
 ## FileServer
 
 To start the FileServer run: 
-    `java Fileserver <IP Address of ZK>:<Port> <Path to dictionary> [Server Port]`
+    `java Fileserver <Zookeeper Host>:<Zookeeper Port> <Path to dictionary> [Server Port]`
 
 ## JobTracker
 
 To start the JobTracker run: 
-    `java JobTracker <IP Address of ZK>:<Port> [Server Port]`
+    `java JobTracker <Zookeeper Host>:<Zookeeper Port> [Server Port]`
 
 ## Worker
 
 To start the Worker run: 
-    `java Worker <IP Address of ZK>:<Port>`
+    `java Worker <Zookeeper Host>:<Zookeeper Port>`
 
 
 ## Notes
