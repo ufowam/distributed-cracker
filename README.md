@@ -1,4 +1,4 @@
-This is a distributed password cracker built with Java and Zookeeper. Given an MD5 hash, it will perform a dictionary attack and attempt to find the word matching the hash. The different nodes comprising the system can run on different machines and everything is coordinated using zookeeper. You will therefore need to have zookeeper running and provide it's address and port to the different nodes.
+This is a distributed password cracker built with Java and Zookeeper. Given a MD5 hash, it will perform a dictionary attack and attempt to find the word matching the hash. The different nodes comprising the system can run on different machines and everything is coordinated using zookeeper. You will therefore need to have zookeeper running and provide it's address and port to the different nodes.
 
 You can launch multiple nodes of each module:
 - The fileservers and job trackers will operate on a primary/backup basis. If the primary fails, one of the backups will take over.
