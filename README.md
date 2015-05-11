@@ -1,4 +1,4 @@
-This is a distributed password cracker. The different nodes comprising the system can run on different machines and everything is coordinated using zookeeper. You will therefore need to have zookeeper running and provide it's address and port to the different nodes.
+This is a distributed password cracker built with Java and Zookeeper. Given an MD5 hash, it will perform a dictionary attack and attempt to find the word matching the hash. The different nodes comprising the system can run on different machines and everything is coordinated using zookeeper. You will therefore need to have zookeeper running and provide it's address and port to the different nodes.
 
 You can launch multiple nodes of each module:
 - The fileservers and job trackers will operate on a primary/backup basis. If the primary fails, one of the backups will take over.
@@ -16,19 +16,20 @@ For more information, you can check the [design](https://github.com/ufowam/distr
 
 ## Running the code
 
-All the following should be run from the src directory.
+To submit a job: 
+    `./submit_job.sh <Zookeeper Host> <Zookeeper Port> <MD5 hash>`
 
-To start the Client run: 
-    `java ClientDriver <Zookeeper Host>:<Zookeeper Port>`
+To check the status of a job:
+    `./check_job_status.sh <Zookeeper Host> <Zookeeper Port> <MD5 hash>`
 
 To start the FileServer run: 
-    `java Fileserver <Zookeeper Host>:<Zookeeper Port> <Path to dictionary> [Server Port]`
+    `./start_fileserver.sh <Zookeeper Host> <Zookeeper Port>`
 
 To start the JobTracker run: 
-    `java JobTracker <Zookeeper Host>:<Zookeeper Port> [Server Port]`
+    `./start_jobtracker.sh <Zookeeper Host> <Zookeeper Port>`
 
 To start the Worker run: 
-    `java Worker <Zookeeper Host>:<Zookeeper Port>`
+    `./start_worker.sh <Zookeeper Host> <Zookeeper Port>`
 
 
 ## Notes
